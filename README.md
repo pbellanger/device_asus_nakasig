@@ -26,16 +26,21 @@ See [Requirements](http://s.android.com/source/requirements.html) and [Establish
 
 ### On your 2012 Nexus 7 mobile tablet
     1. Power down your tablet
-    2. Press and hold volume down and the power buttons of your tablet to enter fastboot mode
+    2. Press and hold the volume down and the power buttons of your tablet to enter fastboot mode
     3. Connect your tablet to your computer via the USB cable
 
 ### On your PC
 Assuming you are at the top of your AOSP working directory:
+
     $ cd out/target/product/tilapia
-If installing the ROM for the first time (*WARNING: all user data will be deleted on your tablet!*):
+
+If installing the ROM for the first time (**WARNING: all user data will be deleted on your tablet!**):
+
     $ fastboot oem unlock
     $ fastboot -w update nakasig-img-eng.*.zip
+
 If installing the ROM from an older version of this ROM (no user data will be lost):
+
     $ fastboot update nakasig-img-eng.*.zip
 
-*NOTE: the initial boot after flashing the ROM may take a long time (in the order of several minutes)*
+**NOTE: the initial boot after flashing the ROM may take a long time (in the order of several minutes)**
