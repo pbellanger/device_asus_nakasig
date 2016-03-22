@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="default_sms_application" translatable="false">com.google.android.apps.messaging</string>
+
+  <string name="config_mms_user_agent" translatable="false">Nexus7</string>
+
+  <!-- Allow the gesture to double tap the power button twice to start the camera while the device
+       is non-interactive. -->
+  <bool name="config_cameraDoubleTapPowerGestureEnabled">false</bool>
+
+  <!-- If true, the display will be shifted around in ambient mode. -->
+  <bool name="config_enableBurnInProtection">false</bool>
+
+  <!-- reference volume index for music stream to limit headphone volume and display warning -->
+  <integer name="config_safe_media_volume_index">5</integer>
+
+  <!-- Flag specifying whether VoLTE is available on device -->
+  <bool name="config_device_volte_available">false</bool>
+
+  <!-- Flag specifying whether VoLTE is available on device -->
+  <bool name="config_device_vt_available">false</bool>
+
+  <!-- Flag specifying whether WFC over IMS is available on device -->
+  <bool name="config_device_wfc_ims_available">false</bool>
+
+</resources>

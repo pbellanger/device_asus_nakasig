@@ -1,0 +1,44 @@
+#/bin/bash
+
+# Reset all repos and create nakasig branches
+repo forall -c "git reset --hard && git clean -f -d && git am --abort"
+repo abandon nakasig
+repo start nakasig --all
+
+# Apply Dmitry Grinberg's patches
+# (Script to automatically apply the git patches courtesy of Ganadist)
+TOOLS_DIRNAME=$(dirname $0)
+PATCHES_DIRNAME=${TOOLS_DIRNAME}/../patches/
+TOP=${ANDROID_BUILD_TOP}
+for D in ${PATCHES_DIRNAME}/*
+do
+  PD=$(basename $D)
+  APPLY_DIR=${PD//_/\/}
+  echo $PD $APPLY_DIR
+  echo "apply patches to" ${APPLY_DIR}
+  for PATCH in ${D}/*
+  do
+    echo "apply" ${PATCH}
+    ( cd ${APPLY_DIR} && git am ${PATCH} )
+  done
+done
+
+# Add developer option to include reboot in global actions menu
+cd $ANDROID_BUILD_TOP/frameworks/base
+git fetch https://android.googlesource.com/platform/frameworks/base refs/changes/72/184272/4 && git cherry-pick FETCH_HEAD
+cd $ANDROID_BUILD_TOP/packages/apps/Settings
+git fetch https://android.googlesource.com/platform/packages/apps/Settings refs/changes/69/183769/3 && git cherry-pick FETCH_HEAD
+
+# Build kernel
+cd ${ANDROID_BUILD_TOP}/kernel/tegra
+CROSS_COMPILE="${ANDROID_BUILD_TOP}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-"
+if [ -n ${USE_CCACHE} ]; then
+  CROSS_COMPILE="${ANDROID_BUILD_TOP}/prebuilts/misc/linux-x86/ccache/ccache $CROSS_COMPILE"
+fi
+export CROSS_COMPILE=${CROSS_COMPILE}
+export ARCH=arm
+make tegra3_android_defconfig
+make ARCH=arm CROSS_COMPILE="${CROSS_COMPILE}" -j$(getconf _NPROCESSORS_ONLN)  "$@"
+cp arch/arm/boot/zImage ${ANDROID_BUILD_TOP}/device/asus/grouper/kernel
+cd ${ANDROID_BUILD_TOP}
+

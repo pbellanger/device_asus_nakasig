@@ -1,0 +1,12 @@
+#!/bin/sh
+
+cd ${ANDROID_BUILD_TOP}/kernel/tegra
+CROSS_COMPILE="${ANDROID_BUILD_TOP}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-"
+if [ -n ${USE_CCACHE} ]; then
+  CROSS_COMPILE="${ANDROID_BUILD_TOP}/prebuilts/misc/linux-x86/ccache/ccache $CROSS_COMPILE"
+fi
+make ${ANDROID_BUILD_TOP}/arch/arm/configs/tegra3_android_defconfig
+make ARCH=arm CROSS_COMPILE="${CROSS_COMPILE}" -j$(getconf _NPROCESSORS_ONLN)  "$@"
+cp arch/arm/boot/zImage ${ANDROID_BUILD_TOP}/device/asus/grouper/kernel
+cd ${ANDROID_BUILD_TOP}
+

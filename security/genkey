@@ -1,0 +1,7 @@
+#!/bin/sh
+
+subject='/C=US/ST=Virginia/L=Forest/O=Bijia/OU=Bijia/CN=Bijia/emailAddress=pbellanger@hotmail.com'
+for x in releasekey platform shared media verify
+do
+    $ANDROID_BUILD_TOP/development/tools/make_key $x "$subject"
+done
