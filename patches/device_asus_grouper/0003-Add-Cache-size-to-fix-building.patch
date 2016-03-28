@@ -1,0 +1,25 @@
+From fe3d255b090996a78f5a8ca6545fc5d59faa949e Mon Sep 17 00:00:00 2001
+From: GtrCraft <nickvanbokhorst@hotmail.com>
+Date: Fri, 6 Nov 2015 10:06:53 +0100
+Subject: [PATCH] Add Cache size to fix building
+
+Needed for marshmallow-dr-release and newer
+---
+ BoardConfigCommon.mk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 5b8a0e4..fc1872c 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -42,6 +42,7 @@ BOARD_SYSTEMIMAGE_PARTITION_SIZE := 681574400
+ # Disable journaling on system.img to save space.
+ BOARD_SYSTEMIMAGE_JOURNAL_SIZE := 0
+ BOARD_USERDATAIMAGE_PARTITION_SIZE := 6567231488
++BOARD_CACHEIMAGE_PARTITION_SIZE := 457179136
+ BOARD_FLASH_BLOCK_SIZE := 4096
+ 
+ # Wifi related defines
+-- 
+1.9.1
+

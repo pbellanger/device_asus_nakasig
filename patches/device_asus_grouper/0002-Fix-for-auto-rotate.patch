@@ -1,0 +1,40 @@
+From 45364134824267c29af792b09e1abc1c676925a7 Mon Sep 17 00:00:00 2001
+From: Philippe Bellanger <pbellanger@hotmail.com>
+Date: Sun, 27 Mar 2016 21:19:52 -0400
+Subject: [PATCH] Fix for auto-rotate
+
+---
+ BoardConfigCommon.mk | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 7ed8d54..7dd975b 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -85,3 +85,23 @@ TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
+ BOARD_SEPOLICY_DIRS += \
+         device/asus/grouper/sepolicy
+ 
++BOARD_SEPOLICY_UNION += \
++        file_contexts \
++        genfs_contexts \
++        bluetooth.te \
++        device.te \
++        domain.te \
++        drmserver.te \
++        init_shell.te \
++        file.te \
++        gpsd.te \
++        keystore.te \
++        lmkd.te \
++        mediaserver.te \
++        rild.te \
++        sensors_config.te \
++        surfaceflinger.te \
++        system_app.te \
++        system_server.te \
++        ueventd.te \
++        vold.te
+-- 
+1.9.1
+
