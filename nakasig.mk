@@ -38,7 +38,8 @@ PRODUCT_PACKAGES := \
 	EditorsSheetsStub \
 	EditorsSlidesStub \
 	NewsstandStub \
-	HangoutsStub \
+#	HangoutsStub \
+#       PrebuiltBugleStub
 	PrebuiltKeepStub \
 	BooksStub \
 	CloudPrint2Stub \
