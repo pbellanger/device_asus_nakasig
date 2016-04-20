@@ -1,8 +1,6 @@
 #/bin/bash
 
-# Reset all repos and create nakasig branches
-repo forall -c "git reset --hard && git clean -f -d && git am --abort"
-repo abandon nakasig
+# Create nakasig branches
 repo start nakasig --all
 
 # Apply Dmitry Grinberg's patches
