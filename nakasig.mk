@@ -34,18 +34,18 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # override package for reduce system image
 PRODUCT_PACKAGES := \
-	EditorsDocsStub \
-	EditorsSheetsStub \
-	EditorsSlidesStub \
+#	EditorsDocsStub \
+#	EditorsSheetsStub \
+#	EditorsSlidesStub \
 	NewsstandStub \
 #	HangoutsStub \
-#       PrebuiltBugleStub
+        PrebuiltBugleStub \
 	PrebuiltKeepStub \
 	BooksStub \
 	CloudPrint2Stub \
-	DriveStub \
+#	DriveStub \
 	FitnessPrebuiltStub \
-	MapsStub \
+#	MapsStub \
 	PlusOneStub \
 	TranslateStub \
 	VideosStub \
