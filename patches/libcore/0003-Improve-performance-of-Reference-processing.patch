@@ -1,0 +1,313 @@
+From a0d6d6fc36bb862a9930a85154dce910849be263 Mon Sep 17 00:00:00 2001
+From: Richard Uhler <ruhler@google.com>
+Date: Fri, 6 Nov 2015 14:35:42 -0800
+Subject: [PATCH 3/3] Improve performance of Reference processing.
+
+By using synchronization on the ReferenceQueue instead of volatile
+modifiers, and adding internal support for ReferenceQueue batch
+enqueue and remove.
+
+ReferenceBenchmark improvements on hammerhead:
+                            Alloc   205 =>  152
+                  AllocAndEnqueue   848 =>  465
+              AllocEnqueueAndPoll  1159 =>  622
+            AllocEnqueueAndRemove  1243 =>  705
+    AllocImplicitEnqueueAndRemove 20698 => 1923
+                     Finalization 29012 => 9429
+
+Bug: 24404957
+Change-Id: I6c3e83f7c34f5c22b001e513b50c932a0d54fd43
+---
+ benchmarks/src/benchmarks/ReferenceBenchmark.java  | 57 ++++++++++++++++++++
+ libart/src/main/java/java/lang/Daemons.java        | 13 +----
+ libart/src/main/java/java/lang/ref/Reference.java  | 48 ++++++++---------
+ .../main/java/java/lang/ref/ReferenceQueue.java    | 63 ++++++++++++++++++++--
+ 4 files changed, 140 insertions(+), 41 deletions(-)
+
+diff --git a/benchmarks/src/benchmarks/ReferenceBenchmark.java b/benchmarks/src/benchmarks/ReferenceBenchmark.java
+index 0fa63f2..7e1d126 100644
+--- a/benchmarks/src/benchmarks/ReferenceBenchmark.java
++++ b/benchmarks/src/benchmarks/ReferenceBenchmark.java
+@@ -19,6 +19,9 @@ package benchmarks;
+ import com.google.caliper.SimpleBenchmark;
+ import java.lang.ref.PhantomReference;
+ import java.lang.ref.ReferenceQueue;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ /**
+  * Benchmark to evaluate the performance of References.
+@@ -68,4 +71,58 @@ public class ReferenceBenchmark extends SimpleBenchmark {
+             }
+         }
+     }
++
++    // How fast can references can be implicitly allocated, enqueued, and
++    // removed?
++    public void timeAllocImplicitEnqueueAndRemove(int reps) {
++        ReferenceQueue<Object> queue = new ReferenceQueue<Object>();
++        List<Object> refs = new ArrayList<Object>();
++        for (int i = 0; i < reps; i++) {
++            refs.add(new PhantomReference<Object>(new Object(), queue));
++        }
++        Runtime.getRuntime().gc();
++        for (int i = 0; i < reps; i++) {
++            try {
++                queue.remove();
++            } catch (InterruptedException ie) {
++                i--;
++            }
++        }
++    }
++
++    static private class FinalizableObject {
++        AtomicInteger count;
++
++        public FinalizableObject(AtomicInteger count) {
++            this.count = count;
++        }
++
++        @Override
++        protected void finalize() {
++            count.incrementAndGet();
++        }
++    }
++
++    // How fast does finalization run?
++    public void timeFinalization(int reps) {
++        // Allocate a bunch of finalizable objects.
++        int n = reps;
++        AtomicInteger count = new AtomicInteger(0);
++        for (int i = 0; i < n; i++) {
++            new FinalizableObject(count);
++        }
++
++        // Run GC so the objects will be collected for finalization.
++        Runtime.getRuntime().gc();
++
++        // Wait for finalization.
++        Runtime.getRuntime().runFinalization();
++
++        // Double check all the objects were finalized.
++        int got = count.get();
++        if (n != got) {
++            throw new IllegalStateException(
++                    String.format("Only %i of %i objects finalized?", got, n));
++        }
++    }
+ }
+diff --git a/libart/src/main/java/java/lang/Daemons.java b/libart/src/main/java/java/lang/Daemons.java
+index 381eb19..fb2d40c 100644
+--- a/libart/src/main/java/java/lang/Daemons.java
++++ b/libart/src/main/java/java/lang/Daemons.java
+@@ -153,20 +153,9 @@ public final class Daemons {
+                 } catch (InterruptedException e) {
+                     continue;
+                 }
+-                enqueue(list);
++                ReferenceQueue.enqueuePending(list);
+             }
+         }
+-
+-        private void enqueue(Reference<?> list) {
+-            Reference<?> start = list;
+-            do {
+-                // pendingNext is owned by the GC so no synchronization is required.
+-                Reference<?> next = list.pendingNext;
+-                list.pendingNext = null;
+-                list.enqueueInternal();
+-                list = next;
+-            } while (list != start);
+-        }
+     }
+ 
+     private static class FinalizerDaemon extends Daemon {
+diff --git a/libart/src/main/java/java/lang/ref/Reference.java b/libart/src/main/java/java/lang/ref/Reference.java
+index 70967b5..7d5ef5f 100644
+--- a/libart/src/main/java/java/lang/ref/Reference.java
++++ b/libart/src/main/java/java/lang/ref/Reference.java
+@@ -126,30 +126,41 @@ public abstract class Reference<T> {
+      * VM requirement: this field <em>must</em> be called "queue"
+      * and be a java.lang.ref.ReferenceQueue.
+      */
+-    volatile ReferenceQueue<? super T> queue;
++    final ReferenceQueue<? super T> queue;
+ 
+     /**
+      * Used internally by java.lang.ref.ReferenceQueue.
+      * VM requirement: this field <em>must</em> be called "queueNext"
+      * and be a java.lang.ref.Reference.
++     * <p>
++     * This field forms a singly linked list of reference objects that have
++     * been enqueued. The last element of the list points to itself, so that
++     * we have the invariant that a reference is enqueued if and only if
++     * queueNext is non-null. Access to the queueNext field is guarded by
++     * synchronization on 'queue'.
+      */
+     @SuppressWarnings("unchecked")
+-    volatile Reference queueNext;
++    Reference queueNext;
+ 
+     /**
+      * Used internally by the VM.  This field forms a circular and
+      * singly linked list of reference objects discovered by the
+      * garbage collector and awaiting processing by the reference
+      * queue thread.
+-     *
+-     * @hide
++     * <p>
++     * The pendingNext field is initially set by the GC. After the GC forms a
++     * complete circularly linked list, the list is handed off to the
++     * ReferenceQueueDaemon using the ReferenceQueue.class lock. The
++     * ReferenceQueueDaemon can then read the pendingNext fields without
++     * additional synchronization.
+      */
+-    public volatile Reference<?> pendingNext;
++    Reference<?> pendingNext;
+ 
+     /**
+      * Constructs a new instance of this class.
+      */
+     Reference() {
++        queue = null;
+     }
+ 
+     Reference(T r, ReferenceQueue<? super T> q) {
+@@ -166,23 +177,6 @@ public abstract class Reference<T> {
+     }
+ 
+     /**
+-     * Adds an object to its reference queue.
+-     *
+-     * @return {@code true} if this call has caused the {@code Reference} to
+-     * become enqueued, or {@code false} otherwise
+-     *
+-     * @hide
+-     */
+-    public final synchronized boolean enqueueInternal() {
+-        if (queue != null && queueNext == null) {
+-            queue.enqueue(this);
+-            queue = null;
+-            return true;
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Forces the reference object to be enqueued if it has been associated with
+      * a queue.
+      *
+@@ -190,7 +184,7 @@ public abstract class Reference<T> {
+      * become enqueued, or {@code false} otherwise
+      */
+     public boolean enqueue() {
+-        return enqueueInternal();
++        return queue != null && queue.enqueue(this);
+     }
+ 
+     /**
+@@ -220,7 +214,11 @@ public abstract class Reference<T> {
+      *         false} otherwise
+      */
+     public boolean isEnqueued() {
+-        return queueNext != null;
++        if (queue == null) {
++            return false;
++        }
++        synchronized (queue) {
++            return queueNext != null;
++        }
+     }
+-
+ }
+diff --git a/luni/src/main/java/java/lang/ref/ReferenceQueue.java b/luni/src/main/java/java/lang/ref/ReferenceQueue.java
+index 4c78fbf..1244f70 100644
+--- a/luni/src/main/java/java/lang/ref/ReferenceQueue.java
++++ b/luni/src/main/java/java/lang/ref/ReferenceQueue.java
+@@ -126,12 +126,19 @@ public class ReferenceQueue<T> {
+     }
+ 
+     /**
+-     * Enqueue the reference object on the receiver.
++     * Enqueue the reference object on the receiver. The caller is responsible
++     * for ensuring the lock is held on this queue, and for calling notify on
++     * this queue after the reference has been enqueued.
+      *
+      * @param reference
+      *            reference object to be enqueued.
++     * @return true if the reference was enqueued.
+      */
+-    synchronized void enqueue(Reference<? extends T> reference) {
++    private boolean enqueueInternal(Reference<? extends T> reference) {
++        if (reference.queueNext != null) {
++            return false;
++        }
++
+         if (tail == null) {
+             head = reference;
+         } else {
+@@ -142,10 +149,58 @@ public class ReferenceQueue<T> {
+         // points to itself.
+         tail = reference;
+         tail.queueNext = reference;
+-        notify();
++        return true;
++    }
++
++    /**
++     * Enqueue the reference object on the receiver.
++     *
++     * @param reference
++     *            reference object to be enqueued.
++     * @return true if the reference was enqueued.
++     */
++    synchronized boolean enqueue(Reference<? extends T> reference) {
++        if (enqueueInternal(reference)) {
++            notify();
++            return true;
++        }
++        return false;
+     }
+ 
+-    /** @hide */
++    /**
++     * Enqueue the given list of currently pending (unenqueued) references.
++     *
++     * @hide
++     */
++    public static void enqueuePending(Reference<?> list) {
++        Reference<?> start = list;
++        do {
++            ReferenceQueue queue = list.queue;
++            if (queue == null) {
++                Reference<?> next = list.pendingNext;
++                list.pendingNext = null;
++                list = next;
++            } else {
++                synchronized (queue) {
++                    do {
++                        Reference<?> next = list.pendingNext;
++                        list.pendingNext = null;
++                        if (list.queueNext == null) {
++                            queue.enqueueInternal(list);
++                        }
++                        list = next;
++                    } while (list != start && list.queue == queue);
++                    queue.notify();
++                }
++            }
++        } while (list != start);
++    }
++
++    /**
++     * List of references that the GC says need to be enqueued.
++     * Protected by ReferenceQueue.class lock.
++     * @hide
++     */
+     public static Reference<?> unenqueued = null;
+ 
+     static void add(Reference<?> list) {
+-- 
+2.6.3
+
