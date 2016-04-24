@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+# Opengapps settings 
+GAPPS_VARIANT := mini
+GAPPS_FORCE_PACKAGE_OVERRIDES := true
+GAPPS_FORCE_MATCHING_DPI := false
+
 PRODUCT_PACKAGE_OVERLAYS := \
 	device/asus/nakasig/overlay-nakasig \
 	device/asus/nakasig/overlay-nexus \
-	device/asus/nakasig/overlay-gms
 
 PRODUCT_PROPERTY_OVERRIDES := \
         ro.product.manufacturer=asus \
@@ -38,8 +43,7 @@ PRODUCT_PACKAGES := \
 	EditorsSheetsStub \
 	EditorsSlidesStub \
 	NewsstandStub \
-#	HangoutsStub \
-#       PrebuiltBugleStub
+	HangoutsStub \
 	PrebuiltKeepStub \
 	BooksStub \
 	CloudPrint2Stub \
@@ -59,16 +63,17 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PACKAGES += \
 	Stk \
-	GCS \
 	NfcProvision
+
+# Include additional opengapps package not included in selected variant
+PRODUCT_PACKAGES += \
+	GCS \
 
 PRODUCT_COPY_FILES := \
 	device/asus/nakasig/init.nakasig.rc:root/init.nakasig.rc
 
-$(call inherit-product, vendor/google/product/gms.mk)
-$(call inherit-product, vendor/google/product/gms-nexus.mk)
-$(call inherit-product, vendor/google/product/facelock.mk)
-$(call inherit-product, vendor/google/product/bootanimation.mk)
+$(call inherit-product, vendor/google/build/bootanimation/bootanimation.mk)
+$(call inherit-product, vendor/google/build/opengapps-packages.mk)
 $(call inherit-product, device/asus/tilapia/full_tilapia.mk)
 
 
