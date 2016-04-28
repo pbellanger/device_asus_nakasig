@@ -18,6 +18,7 @@
 GAPPS_VARIANT := mini
 GAPPS_FORCE_PACKAGE_OVERRIDES := true
 GAPPS_FORCE_MATCHING_DPI := false
+GAPPS_PRODUCT_HAS_CAMERA := false
 
 PRODUCT_PACKAGE_OVERLAYS := \
 	device/asus/nakasig/overlay-nakasig \
