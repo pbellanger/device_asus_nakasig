@@ -15,10 +15,14 @@
 #
 
 # Opengapps settings 
-GAPPS_VARIANT := mini
+GAPPS_VARIANT := stock
 GAPPS_FORCE_PACKAGE_OVERRIDES := true
 GAPPS_FORCE_MATCHING_DPI := false
 GAPPS_PRODUCT_HAS_CAMERA := false
+# Use own  variables for product type and dpi because the variables defined in device/asus/grouper
+# (PRODUCT_CHARACTERISTICS and PRODUCT_AAPT_PREF_CONFIG) do not seem to work properly
+GAPPS_PRODUCT_TYPE := tablet
+GAPPS_PRODUCT_DPI := tvdpi
 
 PRODUCT_PACKAGE_OVERLAYS := \
 	device/asus/nakasig/overlay-nakasig \
@@ -76,7 +80,6 @@ PRODUCT_COPY_FILES := \
 $(call inherit-product, vendor/google/build/bootanimation/bootanimation.mk)
 $(call inherit-product, vendor/google/build/opengapps-packages.mk)
 $(call inherit-product, device/asus/tilapia/full_tilapia.mk)
-
 
 ifeq ($(TARGET_BUILD_VARIANT),user)
   PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.adb.secure=1
