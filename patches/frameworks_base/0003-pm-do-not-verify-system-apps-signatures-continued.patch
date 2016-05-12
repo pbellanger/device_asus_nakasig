@@ -1,0 +1,32 @@
+From b255d4fd1af760e27e9d9c247d617de979c46d4a Mon Sep 17 00:00:00 2001
+From: Philippe Bellanger <pbellanger@hotmail.com>
+Date: Wed, 11 May 2016 22:35:14 -0400
+Subject: [PATCH] Removed unused @param and added @hide javadoc
+
+---
+ core/java/android/content/pm/JarUtils.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/java/android/content/pm/JarUtils.java b/core/java/android/content/pm/JarUtils.java
+index 4bd71d7..5930c03 100644
+--- a/core/java/android/content/pm/JarUtils.java
++++ b/core/java/android/content/pm/JarUtils.java
+@@ -50,6 +50,7 @@ import org.apache.harmony.security.pkcs7.SignerInfo;
+ import org.apache.harmony.security.utils.WrappedX509Certificate;
+ import org.apache.harmony.security.x501.AttributeTypeAndValue;
+ 
++/** @hide */
+ public class JarUtils {
+ 
+     // as defined in PKCS #9: Selected Attribute Types:
+@@ -62,7 +63,6 @@ public class JarUtils {
+      * and certification path building.
+      * See also PKCS #7: Cryptographic Message Syntax Standard:
+      * http://www.ietf.org/rfc/rfc2315.txt
+-     * @param signature - the input stream of signature file to be verified
+      * @param signatureBlock - the input stream of corresponding signature block file
+      * @return array of certificates used to verify the signature file
+      * @throws IOException - if some errors occurs during reading from the stream
+-- 
+1.9.1
+
